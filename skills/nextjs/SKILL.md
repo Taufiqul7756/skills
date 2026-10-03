@@ -1,21 +1,25 @@
 ---
 name: nextjs
-description: Scaffold a production-ready Next.js 16 app in the current folder. Installs the default stack first, then grills the user with a few setup questions (state management, forms, auth, testing, UI kit, extras, brand color, what the app is) and wires up every answer.
-argument-hint: "[App Name]"
+description: Scaffold a production-ready Next.js 16 app. `/nextjs my-app` creates a new my-app folder; plain `/nextjs` uses the current folder. Installs the default stack first, then grills the user with a few setup questions (state management, forms, auth, testing, UI kit, extras, brand color, what the app is) and wires up every answer.
+argument-hint: "[folder-name]"
 disable-model-invocation: true
-allowed-tools: Bash(npx *) Bash(npm *) Bash(node *) Bash(git *) Bash(ls *) Read Write Edit Glob AskUserQuestion
+allowed-tools: Bash(npx *) Bash(npm *) Bash(node *) Bash(git *) Bash(ls *) Bash(cd *) Read Write Edit Glob AskUserQuestion
 ---
 
 # /nextjs — full Next.js project from one command
 
-You are setting up a brand-new Next.js app **in the current working directory**.
+You are setting up a brand-new Next.js app.
+
+- `/nextjs my-app` → create a new folder `my-app` inside the current folder and build the app there.
+- `/nextjs` (nothing after it) → the user already made the folder; build the app in the current folder.
+
 Work through the four phases in order. Do not stop between phases except to ask the Phase 2 questions.
 
 ## Ground rules
 
 - **Phase 0 and 1 ask nothing.** Install the defaults first, then ask (Phase 2).
-- Create and overwrite files with the **Write** tool (it creates folders too). Use Bash only for `npx`, `npm`, `node`, `git`, `ls`. No `mkdir`, `cp`, `rm`, `sed` — use the `node -e` one-liners given here, so the skill works on macOS, Linux and Windows.
-- Run every command from the project root. Never `cd` into another folder.
+- Create and overwrite files with the **Write** tool (it creates folders too). Use Bash only for `npx`, `npm`, `node`, `git`, `ls`, `cd`. No `mkdir`, `cp`, `rm`, `sed` — use the `node -e` one-liners given here, so the skill works on macOS, Linux and Windows.
+- `PROJECT_DIR` (decided in Phase 0) is where everything happens. Every Write/Edit/Read path is inside `PROJECT_DIR`, and every command runs with `PROJECT_DIR` as its working directory. If a command's output shows it ran somewhere else, prefix commands with `cd "PROJECT_DIR" && `.
 - Replace placeholders everywhere: `{{APP_NAME}}` (display name), `{{PACKAGE_NAME}}` (npm name), `{{DESCRIPTION}}` (one line; use `A Next.js app.` until Phase 2 gives a better one). GitHub Actions expressions like `${{ github.ref }}` are not placeholders — keep them as written.
 - Keep files the user already had (`.git`, `.claude/`, `LICENSE`, …). Only README.md is replaced.
 - Version drift: this skill targets Next.js 16 / Tailwind 4 / ESLint 9. If something here fails against the installed versions, read `node_modules/next/dist/docs/` (or the package's README), adapt, and keep going. Mention the adaptation in the final summary.
@@ -27,10 +31,19 @@ Work through the four phases in order. Do not stop between phases except to ask 
 
 1. `node --version` → must be ≥ 20.9 (recommend 24 LTS). If older, stop and tell the user to upgrade.
 2. `git --version` → must exist.
-3. `ls -A` → if a `package.json` already exists, stop and ask whether to continue (this skill is for new projects).
-4. Names:
-   - `{{PACKAGE_NAME}}` = current folder name, lowercased, spaces/underscores → `-`, only `a-z 0-9 - .`
-   - `{{APP_NAME}}` = the text typed after `/nextjs` (here: "$ARGUMENTS"). If that is empty, use the folder name in Title Case.
+3. Decide `PROJECT_DIR`. The folder name typed after `/nextjs` is: "$ARGUMENTS"
+   - **Empty** → `PROJECT_DIR` = the current folder. Do not create anything.
+   - **Same name as the current folder** (user is already inside `my-app` and typed `/nextjs my-app`) → `PROJECT_DIR` = the current folder. Do not nest `my-app/my-app`.
+   - **Anything else** → turn it into a safe folder name (trim, spaces → `-`, drop characters other than letters, digits, `-`, `_`, `.`). `PROJECT_DIR` = `<current folder>/<that name>`.
+     - If it does not exist, create it:
+       `node -e "require('fs').mkdirSync('<name>',{recursive:true})"`
+     - If it already exists, use it as is (do not create a second one).
+     - Then move into it: `cd "<name>"`. Confirm with `node -e "console.log(process.cwd())"`.
+4. `ls -A` in `PROJECT_DIR` → if a `package.json` already exists, stop and ask whether to continue (this skill is for new projects). Any other files (README.md, LICENSE, `.git`, `.claude/`) are fine.
+5. Names, from the `PROJECT_DIR` folder name:
+   - `{{PACKAGE_NAME}}` = lowercased, spaces/underscores → `-`, only `a-z 0-9 - .` (e.g. `First_Next-Test` → `first-next-test`)
+   - `{{APP_NAME}}` = Title Case with spaces (e.g. `first-next-test` → `First Next Test`)
+6. Tell the user in one line where the app will be built, e.g. "Building in D:\first-next-test (new folder)".
 
 ---
 
@@ -343,7 +356,11 @@ api.interceptors.response.use(
     if (error instanceof AxiosError) {
       const body = error.response?.data as { message?: string } | undefined;
       return Promise.reject(
-        new ApiError(body?.message ?? error.message, error.response?.status, error.response?.data),
+        new ApiError(
+          body?.message ?? error.message,
+          error.response?.status,
+          error.response?.data,
+        ),
       );
     }
     return Promise.reject(error);
@@ -427,7 +444,11 @@ export default function AppProviders({ children }: { children: ReactNode }) {
   --color-primary: var(--brand);
   --color-primary-foreground: var(--brand-foreground);
   --color-primary-hover: color-mix(in oklab, var(--brand) 85%, black);
-  --color-primary-subtle: color-mix(in oklab, var(--brand) 12%, var(--background));
+  --color-primary-subtle: color-mix(
+    in oklab,
+    var(--brand) 12%,
+    var(--background)
+  );
   --color-ring: var(--brand);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -498,11 +519,14 @@ export default function HomePage() {
       <span className="w-fit rounded-full bg-primary-subtle px-3 py-1 font-mono text-xs text-primary">
         Next.js 16 · ready to build
       </span>
-      <h1 className="text-4xl font-semibold tracking-tight">{siteConfig.name}</h1>
+      <h1 className="text-4xl font-semibold tracking-tight">
+        {siteConfig.name}
+      </h1>
       <p className="text-lg text-muted-foreground">{siteConfig.description}</p>
       <p className="text-sm text-muted-foreground">
-        Next step: write the first PRD in <code className="font-mono">docs/prd/</code>, then break
-        it into tasks in <code className="font-mono">docs/tasks/</code>.
+        Next step: write the first PRD in{" "}
+        <code className="font-mono">docs/prd/</code>, then break it into tasks
+        in <code className="font-mono">docs/tasks/</code>.
       </p>
     </main>
   );
@@ -712,30 +736,39 @@ Status: draft | approved | done
 Owner: <name>
 
 ## Problem
+
 Who has the problem, and what is painful today? (2–4 sentences)
 
 ## Goal
+
 What changes for the user when this ships?
 
 ## User stories
+
 - As a <user>, I want <action> so that <outcome>.
 
 ## Scope
+
 In:
+
 - ...
-Out (not now):
+  Out (not now):
 - ...
 
 ## UX
+
 Pages/routes, key states (empty, loading, error), link screenshots in docs/designs/screenshots/.
 
 ## Data & API
+
 Entities, endpoints, validation rules (zod schemas).
 
 ## Acceptance criteria
+
 - [ ] ...
 
 ## Open questions
+
 - ...
 ```
 ````
@@ -758,13 +791,16 @@ Status: todo | doing | done
 Blocked by: T-NNNN (or "none")
 
 ## What
+
 One paragraph: what the user can do after this task.
 
 ## Acceptance criteria
+
 - [ ] ...
 - [ ] `npm run lint && npm run typecheck && npm run build` pass
 
 ## Notes
+
 Files likely touched, edge cases, links.
 ```
 
@@ -786,10 +822,10 @@ Implementation lives in `src/app/globals.css` — change both together.
 
 ## Brand
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `--brand` | `#4f46e5` | Primary buttons, links, focus rings, active states |
-| `--brand-foreground` | `#ffffff` | Text/icons on top of brand color |
+| Token                | Value     | Use                                                |
+| -------------------- | --------- | -------------------------------------------------- |
+| `--brand`            | `#4f46e5` | Primary buttons, links, focus rings, active states |
+| `--brand-foreground` | `#ffffff` | Text/icons on top of brand color                   |
 
 Hover and subtle shades are derived with `color-mix()` — never hard-code them.
 
@@ -797,25 +833,26 @@ Hover and subtle shades are derived with `color-mix()` — never hard-code them.
 
 ## Color tokens → Tailwind utilities
 
-| Utility | Light | Dark | Use |
-| --- | --- | --- | --- |
-| `bg-background` | `#ffffff` | `#09090b` | Page background |
-| `text-foreground` | `#0a0a0a` | `#fafafa` | Headings, body text |
-| `bg-surface` | `#fafafa` | `#18181b` | Cards, panels, modals |
-| `bg-muted` | `#f4f4f5` | `#27272a` | Hover rows, inputs, chips |
-| `text-muted-foreground` | `#71717a` | `#a1a1aa` | Secondary text, placeholders |
-| `border-border` | `#e4e4e7` | `#27272a` | All borders (default) |
-| `bg-primary` / `text-primary` | `--brand` | `--brand` | Primary actions |
-| `text-primary-foreground` | `--brand-foreground` | same | Text on primary |
-| `hover:bg-primary-hover` | brand 85% + black | same | Primary hover |
-| `bg-primary-subtle` | brand 12% on background | same | Selected/active backgrounds, badges |
-| `ring-ring` | `--brand` | `--brand` | Focus rings |
-| `text-success` / `bg-success` | `#16a34a` | `#22c55e` | Approved, done |
-| `text-warning` / `bg-warning` | `#d97706` | `#f59e0b` | Pending, attention |
-| `text-danger` / `bg-danger` | `#dc2626` | `#ef4444` | Errors, destructive |
-| `text-info` / `bg-info` | `#0891b2` | `#22d3ee` | Neutral notices |
+| Utility                       | Light                   | Dark      | Use                                 |
+| ----------------------------- | ----------------------- | --------- | ----------------------------------- |
+| `bg-background`               | `#ffffff`               | `#09090b` | Page background                     |
+| `text-foreground`             | `#0a0a0a`               | `#fafafa` | Headings, body text                 |
+| `bg-surface`                  | `#fafafa`               | `#18181b` | Cards, panels, modals               |
+| `bg-muted`                    | `#f4f4f5`               | `#27272a` | Hover rows, inputs, chips           |
+| `text-muted-foreground`       | `#71717a`               | `#a1a1aa` | Secondary text, placeholders        |
+| `border-border`               | `#e4e4e7`               | `#27272a` | All borders (default)               |
+| `bg-primary` / `text-primary` | `--brand`               | `--brand` | Primary actions                     |
+| `text-primary-foreground`     | `--brand-foreground`    | same      | Text on primary                     |
+| `hover:bg-primary-hover`      | brand 85% + black       | same      | Primary hover                       |
+| `bg-primary-subtle`           | brand 12% on background | same      | Selected/active backgrounds, badges |
+| `ring-ring`                   | `--brand`               | `--brand` | Focus rings                         |
+| `text-success` / `bg-success` | `#16a34a`               | `#22c55e` | Approved, done                      |
+| `text-warning` / `bg-warning` | `#d97706`               | `#f59e0b` | Pending, attention                  |
+| `text-danger` / `bg-danger`   | `#dc2626`               | `#ef4444` | Errors, destructive                 |
+| `text-info` / `bg-info`       | `#0891b2`               | `#22d3ee` | Neutral notices                     |
 
 **Rules**
+
 - Use only these utilities for color. No raw hex, no arbitrary values like `bg-[#123456]`.
 - Every screen must work in light and dark mode.
 
@@ -826,13 +863,13 @@ Hover and subtle shades are derived with `color-mix()` — never hard-code them.
 - Sans: Geist (`font-sans`) — body, labels, inputs, navigation
 - Mono: Geist Mono (`font-mono`) — IDs, codes, badges, numbers in tables
 
-| Role | Class |
-| --- | --- |
-| Page title | `text-2xl font-semibold tracking-tight` |
-| Section heading | `text-lg font-semibold` |
-| Card title / label | `text-base font-medium` |
-| Body | `text-sm` (dense UI) or `text-base` (content pages) |
-| Meta / captions | `text-xs text-muted-foreground` |
+| Role               | Class                                               |
+| ------------------ | --------------------------------------------------- |
+| Page title         | `text-2xl font-semibold tracking-tight`             |
+| Section heading    | `text-lg font-semibold`                             |
+| Card title / label | `text-base font-medium`                             |
+| Body               | `text-sm` (dense UI) or `text-base` (content pages) |
+| Meta / captions    | `text-xs text-muted-foreground`                     |
 
 ---
 
@@ -845,41 +882,47 @@ Hover and subtle shades are derived with `color-mix()` — never hard-code them.
 
 ## Radius & shadow
 
-| Utility | Value | Use |
-| --- | --- | --- |
-| `rounded-sm` | 4px | Inputs, tags |
-| `rounded-md` | 8px | Buttons, cards, dropdowns |
-| `rounded-lg` | 12px | Large cards, modals |
-| `rounded-full` | pill | Badges, avatars |
-| `shadow-sm` | — | Cards |
-| `shadow-lg` | — | Dropdowns, modals |
+| Utility        | Value | Use                       |
+| -------------- | ----- | ------------------------- |
+| `rounded-sm`   | 4px   | Inputs, tags              |
+| `rounded-md`   | 8px   | Buttons, cards, dropdowns |
+| `rounded-lg`   | 12px  | Large cards, modals       |
+| `rounded-full` | pill  | Badges, avatars           |
+| `shadow-sm`    | —     | Cards                     |
+| `shadow-lg`    | —     | Dropdowns, modals         |
 
 ---
 
 ## Components
 
 ### Button
+
 - Variants: `primary` (bg-primary, text-primary-foreground, hover:bg-primary-hover), `secondary` (bg-primary-subtle, text-primary), `outline` (border, transparent), `ghost` (transparent, hover:bg-muted), `danger` (bg-danger, white text)
 - Sizes: `sm` (h-8 px-3 text-xs), `md` (h-9 px-4 text-sm), `lg` (h-10 px-6 text-base)
 - Always: `focus-visible:ring-2 ring-ring ring-offset-2 ring-offset-background`, disabled = `opacity-50 pointer-events-none`
 
 ### Input / FormField
+
 - Label above input (`text-sm font-medium`), required marker `*` in `text-danger`
 - Input: `h-9 rounded-sm border bg-background px-3 text-sm`, focus ring `ring-ring`
 - Error: border `border-danger`, message below in `text-xs text-danger`
 
 ### Badge / status chip
+
 - `rounded-full px-2 py-0.5 font-mono text-xs`
 - pending → warning, approved/done → success, rejected/failed → danger
 
 ### Card
+
 - `rounded-md border bg-surface p-6 shadow-sm`
 
 ### Modal
+
 - Backdrop `bg-black/50`, container `rounded-lg bg-surface shadow-lg`
 - Header: title + close button; footer: actions right-aligned
 
 ### Table
+
 - Header: `text-xs font-semibold uppercase text-muted-foreground`
 - Row: `border-b hover:bg-muted`; actions column right-aligned
 
@@ -909,8 +952,8 @@ docs and conversation. Keep it short; update it when a new term appears.
 ## Glossary
 
 | Term | Meaning | Not to be confused with |
-| --- | --- | --- |
-| | | |
+| ---- | ------- | ----------------------- |
+|      |         |                         |
 
 ## Key decisions
 
@@ -1004,14 +1047,14 @@ npm run dev                  # http://localhost:3000
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Dev server (Turbopack) |
-| `npm run build` | Production build (standalone output) |
-| `npm run start` | Serve the production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript, no emit |
-| `npm run format` | Prettier write |
+| Script              | What it does                         |
+| ------------------- | ------------------------------------ |
+| `npm run dev`       | Dev server (Turbopack)               |
+| `npm run build`     | Production build (standalone output) |
+| `npm run start`     | Serve the production build           |
+| `npm run lint`      | ESLint                               |
+| `npm run typecheck` | TypeScript, no emit                  |
+| `npm run format`    | Prettier write                       |
 
 ## Docker
 
@@ -1031,7 +1074,7 @@ docker run -p 3000:3000 {{PACKAGE_NAME}}
 
 ### 1.5 Git + Husky
 
-If `.git` does not exist: `git init -b main`. Then:
+If `PROJECT_DIR/.git` does not exist: `git init -b main` (in `PROJECT_DIR`, even if a parent folder is a git repo). Then:
 
 ```bash
 npx husky init
@@ -1067,37 +1110,37 @@ Use the **AskUserQuestion** tool (two calls, four questions each). Recommended o
 
 **Round 1**
 
-1. *State management?* (header `State`)
+1. _State management?_ (header `State`)
    - Zustand + TanStack Query (Recommended) — Zustand for client UI state, Query for server data
    - Redux Toolkit + RTK Query
    - TanStack Query only
    - None for now
-2. *Forms?* (header `Forms`)
+2. _Forms?_ (header `Forms`)
    - React Hook Form + Zod (Recommended)
    - Zod only, no form library
-3. *Auth?* (header `Auth`)
+3. _Auth?_ (header `Auth`)
    - None for now (Recommended)
    - My own backend API (httpOnly cookies + refresh)
-4. *Testing?* (header `Tests`)
+4. _Testing?_ (header `Tests`)
    - Vitest + Testing Library (Recommended)
    - Vitest + Playwright e2e
    - None for now
 
 **Round 2**
 
-5. *UI components?* (header `UI`)
+5. _UI components?_ (header `UI`)
    - Own components on the design tokens (Recommended)
    - shadcn/ui
-6. *Extras?* (header `Extras`, multiSelect)
+6. _Extras?_ (header `Extras`, multiSelect)
    - Dark mode toggle (next-themes)
    - Toast notifications (sonner)
    - React Compiler (automatic memoization)
-7. *Brand color?* (header `Brand`) — "Other" = any hex, or "later"
+7. _Brand color?_ (header `Brand`) — "Other" = any hex, or "later"
    - Indigo #4f46e5 (Recommended)
    - Teal #00d4c8
    - Emerald #059669
    - Neutral #18181b
-8. *What are you building?* (header `Project`) — "Pick the closest, or type one line in Other."
+8. _What are you building?_ (header `Project`) — "Pick the closest, or type one line in Other."
    - Admin dashboard / internal tool
    - SaaS web app
    - Marketing / content site
@@ -1237,7 +1280,8 @@ const axiosBaseQuery: BaseQueryFn<AxiosArgs, unknown, QueryError> = async ({
     const result = await api.request({ url, method, data, params });
     return { data: result.data };
   } catch (error) {
-    const apiError = error instanceof ApiError ? error : new ApiError("Request failed");
+    const apiError =
+      error instanceof ApiError ? error : new ApiError("Request failed");
     return { error: { status: apiError.status, message: apiError.message } };
   }
 };
@@ -1266,7 +1310,8 @@ export function makeStore() {
       ui: uiSlice.reducer,
       [baseApi.reducerPath]: baseApi.reducer,
     },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(baseApi.middleware),
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(baseApi.middleware),
   });
 }
 
@@ -1367,7 +1412,11 @@ let refreshPromise: Promise<void> | null = null;
 
 function toApiError(error: AxiosError): ApiError {
   const body = error.response?.data as { message?: string } | undefined;
-  return new ApiError(body?.message ?? error.message, error.response?.status, error.response?.data);
+  return new ApiError(
+    body?.message ?? error.message,
+    error.response?.status,
+    error.response?.data,
+  );
 }
 
 api.interceptors.response.use(
@@ -1378,7 +1427,12 @@ api.interceptors.response.use(
     const original = error.config as RetryableConfig | undefined;
     const isRefreshCall = original?.url?.includes(REFRESH_PATH);
 
-    if (error.response?.status === 401 && original && !original._retry && !isRefreshCall) {
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !isRefreshCall
+    ) {
       original._retry = true;
       try {
         refreshPromise ??= api
@@ -1462,7 +1516,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-lg border bg-surface p-6 shadow-sm">
         <h1 className="text-xl font-semibold">Sign in</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Login form goes here: React Hook Form + zod → POST /auth/login → backend sets the cookie.
+          Login form goes here: React Hook Form + zod → POST /auth/login →
+          backend sets the cookie.
         </p>
       </div>
     </main>
@@ -1518,7 +1573,7 @@ describe("cn", () => {
 });
 ```
 
-Then: `npm pkg set scripts.test="vitest run" scripts.test:watch="vitest"`, add `- run: npm test` before the build step in `.github/workflows/ci.yml`, add `npm test` to the "done" checks in CLAUDE.md, and add to Data & state: `- Tests → Vitest + Testing Library, next to the code as \`*.test.ts(x)\`.`
+Then: `npm pkg set scripts.test="vitest run" scripts.test:watch="vitest"`, add `- run: npm test` before the build step in `.github/workflows/ci.yml`, add `npm test` to the "done" checks in CLAUDE.md, and add to Data & state: `- Tests → Vitest + Testing Library, next to the code as \`\*.test.ts(x)\`.`
 
 ### Tests: + Playwright e2e
 
@@ -1588,7 +1643,12 @@ export default function AppProviders({ children }: { children: ReactNode }) {
   const queryClient = getQueryClient();
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
       <QueryClientProvider client={queryClient}>
         {children}
         <Toaster richColors position="top-right" />
@@ -1628,7 +1688,7 @@ git commit -m "chore: scaffold next.js app with /nextjs"
 ```
 
 3. Final message — short, no file dumps:
-   - One line: what was created and that lint/typecheck/build pass.
+   - One line: what was created, where (`PROJECT_DIR`), and that lint/typecheck/build pass.
    - The choices, as a compact list (state, forms, auth, tests, UI, extras, brand).
    - Anything adapted for version drift.
-   - Next steps: `npm run dev`, fill `.env.local`, then offer: "Want me to grill you about the first feature and write `docs/prd/0001-….md`?"
+   - Next steps: if a new folder was created, first `cd <name>` and start a fresh `claude` there (so it loads the project's CLAUDE.md); then `npm run dev`, fill `.env.local`, then offer: "Want me to grill you about the first feature and write `docs/prd/0001-….md`?"
