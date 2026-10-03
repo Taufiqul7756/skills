@@ -1,0 +1,17 @@
+{
+  "name": "YOUR_GITHUB",
+  "owner": {
+    "name": "YOUR NAME",
+    "url": "https://github.com/YOUR_GITHUB"
+  },
+  "description": "Opinionated project-starter skills for Claude Code.",
+  "plugins": [
+    {
+      "name": "YOUR_GITHUB-skills",
+      "source": "./",
+      "description": "Skills that scaffold production-ready projects after a short grilling session. Starts with /nextjs.",
+      "category": "development",
+      "keywords": ["nextjs", "scaffold", "starter", "react", "typescript", "tailwind"]
+    }
+  ]
+}
