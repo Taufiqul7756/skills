@@ -1,17 +1,24 @@
 {
-  "name": "YOUR_GITHUB",
+  "name": "taufiqul7756",
   "owner": {
-    "name": "YOUR NAME",
-    "url": "https://github.com/YOUR_GITHUB"
+    "name": "Taufiqul Islam",
+    "url": "https://github.com/taufiqul7756"
   },
   "description": "Opinionated project-starter skills for Claude Code.",
   "plugins": [
     {
-      "name": "YOUR_GITHUB-skills",
+      "name": "taufiqul7756-skills",
       "source": "./",
       "description": "Skills that scaffold production-ready projects after a short grilling session. Starts with /nextjs.",
       "category": "development",
-      "keywords": ["nextjs", "scaffold", "starter", "react", "typescript", "tailwind"]
+      "keywords": [
+        "nextjs",
+        "scaffold",
+        "starter",
+        "react",
+        "typescript",
+        "tailwind"
+      ]
     }
   ]
 }

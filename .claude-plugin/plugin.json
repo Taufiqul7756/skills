@@ -1,9 +1,12 @@
 {
-  "name": "YOUR_GITHUB-skills",
+  "name": "taufiqul7756-skills",
   "description": "Skills that scaffold production-ready projects after a short grilling session. Starts with /nextjs.",
-  "author": { "name": "YOUR NAME", "url": "https://github.com/YOUR_GITHUB" },
-  "homepage": "https://github.com/YOUR_GITHUB/skills",
-  "repository": "https://github.com/YOUR_GITHUB/skills",
+  "author": {
+    "name": "Taufiqul Islam",
+    "url": "https://github.com/taufiqul7756"
+  },
+  "homepage": "https://github.com/taufiqul7756/skills",
+  "repository": "https://github.com/taufiqul7756/skills",
   "license": "MIT",
   "keywords": ["nextjs", "scaffold", "starter"]
 }
